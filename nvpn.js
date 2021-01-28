@@ -38,11 +38,12 @@ async function toggle() {
     } = await fileExists(configFilePath) ? await readConfig() : await createConfig();
     if (await isConnectionActive(connectionName)) {
       await interruptConnection(connectionName);
+      console.log(`Connection "${connectionName}" has been interrupted.`);
     }
     else {
       await establishConnection(connectionName, combinePassword(secretBase32, passwordStaticPart));
+      console.log(`Connection "${connectionName}" has been established.`);
     }
-    console.log(`Connection "${connectionName}" has been toggled.`);
   }
   catch (e) {
     console.error('Unable to toggle a connection.');
