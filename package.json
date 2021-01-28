@@ -1,0 +1,17 @@
+{
+  "name": "nvpn",
+  "version": "0.0.1",
+  "bin": {
+    "nvpn": "nvpn.js"
+  },
+  "author": "Dmitriy Pushkov <ezze@ezze.org>",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^7.0.0",
+    "execa": "^5.0.0",
+    "fs-extra": "^9.1.0",
+    "inquirer": "^7.3.3",
+    "speakeasy": "^2.0.0",
+    "tmp": "^0.2.1"
+  }
+}
