@@ -11,26 +11,87 @@ const os = require('os');
 const configFileName = '.nvpnrc';
 const configFilePath = path.resolve(os.homedir(), configFileName);
 
-(async() => {
+program
+  .command('toggle', { isDefault: true })
+  .description('Toggle VPN connection')
+  .action(toggle);
+program
+  .command('init')
+  .description(`Create configuration file "${configFileName}" in user's home directory`)
+  .action(init);
+program
+  .command('connect')
+  .description('Establish VPN connection')
+  .action(connect);
+program
+  .command('disconnect')
+  .description('Interrupt VPN connection')
+  .action(disconnect);
+program.parse(process.argv);
+
+async function toggle() {
   try {
     const {
       connectionName,
       secretBase32,
       passwordStaticPart
     } = await fileExists(configFilePath) ? await readConfig() : await createConfig();
-
-    if (await active(connectionName)) {
-      await disconnect(connectionName);
+    if (await isConnectionActive(connectionName)) {
+      await interruptConnection(connectionName);
     }
     else {
-      await connect(connectionName, combinePassword(secretBase32, passwordStaticPart));
+      await establishConnection(connectionName, combinePassword(secretBase32, passwordStaticPart));
     }
+    console.log(`Connection "${connectionName}" has been toggled.`);
   }
   catch (e) {
-    console.error('Something went wrong...');
+    console.error('Unable to toggle a connection.');
     console.error(e);
   }
-})();
+}
+
+async function init() {
+  try {
+    await createConfig();
+    console.log('Configuration file is created successfully.');
+  }
+  catch (e) {
+    console.error('Unable to create configuration file.');
+    console.error(e);
+  }
+}
+
+async function connect() {
+  try {
+    const { connectionName, secretBase32, passwordStaticPart } = await readConfig();
+    if (await isConnectionActive(connectionName)) {
+      console.warn(`Connection "${connectionName}" is already established.`);
+      return;
+    }
+    await establishConnection(connectionName, combinePassword(secretBase32, passwordStaticPart));
+    console.log(`Connection "${connectionName}" has been established.`);
+  }
+  catch (e) {
+    console.error('Unable to establish a connection.');
+    console.error(e);
+  }
+}
+
+async function disconnect() {
+  try {
+    const { connectionName } = await readConfig();
+    if (!await isConnectionActive(connectionName)) {
+      console.warn(`Connection "${connectionName}" is not established.`);
+      return;
+    }
+    await interruptConnection(connectionName);
+    console.log(`Connection "${connectionName}" has been interrupted.`);
+  }
+  catch (e) {
+    console.error('Unable to interrupt a connection.');
+    console.error(e);
+  }
+}
 
 async function createConfig() {
   const answers = await inquirer.prompt([{
@@ -59,6 +120,9 @@ async function createConfig() {
 }
 
 async function readConfig() {
+  if (!await fileExists(configFilePath)) {
+    return Promise.reject(`Configuration file "${configFilePath}" doesn't exist.`);
+  }
   const { connectionName, secretBase32, passwordStaticPart } = await fs.readJson(configFilePath);
   return { connectionName, secretBase32, passwordStaticPart };
 }
@@ -68,7 +132,7 @@ function combinePassword(secretBase32, passwordStaticPart) {
   return `${passwordStaticPart}${token}`;
 }
 
-async function active(connectionName) {
+async function isConnectionActive(connectionName) {
   const cmd = await execute('nmcli', [
     '-f',
     'GENERAL.STATE',
@@ -79,7 +143,7 @@ async function active(connectionName) {
   return /^GENERAL.STATE:\s+activated$/.test(cmd.stdout);
 }
 
-async function connect(connectionName, password) {
+async function establishConnection(connectionName, password) {
   const passwordFileContents = `vpn.secrets.password:${password}`;
   const passwordFilePath = tmp.tmpNameSync({ prefix: 'nvpn' });
   try {
@@ -103,7 +167,7 @@ async function connect(connectionName, password) {
   }
 }
 
-async function disconnect(connectionName) {
+async function interruptConnection(connectionName) {
   await execute('nmcli', [
     'connection',
     'down',
