@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=NVPN toggle app
+Exec=nvpn
+Terminal=true
+Type=Application
+Icon=network-manager
+Categories=Network;
