@@ -140,7 +140,9 @@ async function isConnectionActive(connectionName) {
     'connection',
     'show',
     connectionName
-  ]);
+  ], {
+    stderr: true
+  });
   return /^GENERAL.STATE:\s+activated$/.test(cmd.stdout);
 }
 
